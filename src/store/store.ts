@@ -20,7 +20,12 @@ export type Product = {
 export type ProductStore = {
   products: Product[];
   productByKeys: {[id: string]: Product};
-  productsInCart: {[id: string]: {quantity: number}};
+  productsInCart: {
+    [id: string]: {
+      totalQuantity: number;
+      sizes: {[id: string]: {quantity: number}};
+    };
+  };
   fetchProducts: Function;
   addToCart: Function;
   removeFromCart: Function;
@@ -53,15 +58,42 @@ const productStore = create<ProductStore>(set => ({
       console.error('Failed to fetch products', error);
     }
   },
+
   addToCart: (productId: string, selectedSize: number) =>
     set(state => {
       if (state.productsInCart?.[productId]) {
+        if (state.productsInCart?.[productId]?.sizes?.[selectedSize]) {
+          return {
+            productsInCart: {
+              ...state.productsInCart,
+              [productId]: {
+                ...state.productsInCart?.[productId],
+                totalQuantity:
+                  state.productsInCart?.[productId]?.totalQuantity + 1,
+                sizes: {
+                  ...state.productsInCart?.[productId]?.sizes,
+                  [selectedSize]: {
+                    ...state.productsInCart?.[productId]?.sizes?.[selectedSize],
+                    quantity:
+                      state.productsInCart?.[productId]?.sizes?.[selectedSize]
+                        ?.quantity + 1,
+                  },
+                },
+              },
+            },
+          };
+        }
         return {
           productsInCart: {
             ...state.productsInCart,
             [productId]: {
               ...state.productsInCart?.[productId],
-              quantity: state.productsInCart?.[productId]?.quantity + 1,
+              totalQuantity:
+                state.productsInCart?.[productId]?.totalQuantity + 1,
+              sizes: {
+                ...state.productsInCart?.[productId]?.sizes,
+                [selectedSize]: {quantity: 1},
+              },
             },
           },
         };
@@ -69,20 +101,37 @@ const productStore = create<ProductStore>(set => ({
         return {
           productsInCart: {
             ...state.productsInCart,
-            [productId]: {quantity: 1},
+            [productId]: {
+              totalQuantity: 1,
+              sizes: {
+                [selectedSize]: {quantity: 1},
+              },
+            },
           },
         };
       }
     }),
-  removeFromCart: (productId: string) =>
+  removeFromCart: (productId: string, selectedSize: number) =>
     set(state => {
-      if (state.productsInCart?.[productId]?.quantity > 1) {
+      if (
+        state.productsInCart?.[productId]?.sizes?.[selectedSize]?.quantity > 1
+      ) {
         return {
           productsInCart: {
             ...state.productsInCart,
             [productId]: {
               ...state.productsInCart?.[productId],
-              quantity: state.productsInCart?.[productId]?.quantity - 1,
+              totalQuantity:
+                state.productsInCart?.[productId]?.totalQuantity - 1,
+              sizes: {
+                ...state.productsInCart?.[productId]?.sizes,
+                [selectedSize]: {
+                  ...state.productsInCart?.[productId]?.sizes?.[selectedSize],
+                  quantity:
+                    state.productsInCart?.[productId]?.sizes?.[selectedSize]
+                      ?.quantity - 1,
+                },
+              },
             },
           },
         };
@@ -92,12 +141,30 @@ const productStore = create<ProductStore>(set => ({
         };
       }
     }),
-  removeItem: (productId: string) =>
+  removeItem: (productId: string, selectedSize: number) =>
     set(state => {
-      const {[productId]: _, ...rest} = state.productsInCart;
-      return {
-        productsInCart: rest,
-      };
+      const {[productId]: __, ...productsInCart} = state.productsInCart;
+      const {[selectedSize]: _, ...rest} =
+        state.productsInCart?.[productId]?.sizes;
+      if (Object.keys(rest).length < 1) {
+        return {
+          productsInCart,
+        };
+      } else {
+        return {
+          productsInCart: {
+            ...state.productsInCart,
+            [productId]: {
+              ...state.productsInCart?.[productId],
+              totalQuantity:
+                state.productsInCart?.[productId]?.totalQuantity -
+                state.productsInCart?.[productId]?.sizes?.[selectedSize]
+                  ?.quantity,
+              sizes: rest,
+            },
+          },
+        };
+      }
     }),
 }));
 

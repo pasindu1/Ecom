@@ -80,7 +80,7 @@ const ProductDetail = () => {
             Price: {`${price?.currency} ${price?.amount}`}
           </Text>
           <View style={tw`flex-1 flex-row`}>
-            {sizes.map(size => (
+            {sizes?.map(size => (
               <TouchableOpacity
                 key={size}
                 style={[
